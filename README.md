@@ -22,8 +22,8 @@ An advanced blog api that allows editors publish, manage and access their articl
 ### Tools
 
 - FastAPI + Uvicorn
-- Postgresasync ()
-- SQLModel ()
-- Alembic ()
-- Fastapi Mail ()
+- Postgres + asyncpg
+- SQLModel
+- Alembic
+- Fastapi
 - Redis
