@@ -1,29 +1,269 @@
 # Blog API
 
-An advanced blog api that allows editors publish, manage and access their articles
+> A production-ready, async blog platform API built with FastAPI; enabling editors, authors, and administrators to publish, manage, and analyze content at scale.
 
-### Features
+---
 
-- User Authentication and Authorization
-- Author Profile Management
-  - (Track articles activities)
-  - (Manage Articles)
-- Post Management
-  - (Create/Draft post article)
-  - (Delete post)
-  - (Edit post)
-  - (Track post analytics, like views, comments, etc.)
-  - Comment management
-- Administration Management
-  - (Users - Manage/Ban Users)
-  - (Post - Full Access)
-  - (Track platform activities)
+## Table of Contents
 
-### Tools
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Environment Variables](#environment-variables)
+  - [Database Setup](#database-setup)
+  - [Running the Server](#running-the-server)
+- [Authentication](#authentication)
+- [API Reference](#api-reference)
+- [Contributing](#contributing)
 
-- FastAPI + Uvicorn
-- Postgres + asyncpg
-- SQLModel
-- Alembic
-- Fastapi
-- Redis
+---
+
+## Features
+
+### Authentication & Authorization
+
+- JWT access and refresh token flow
+- Role-based access control — `author`, `editor`, `admin`
+- Secure password hashing with bcrypt
+- Token revocation via Redis blocklist
+
+### Author Profile Management
+
+- Profile creation and updates
+- Activity feed — track published articles, drafts, and engagement
+- Personal article dashboard with status filters
+
+### Post Management
+
+- Create, edit, and delete posts
+- Draft / publish / archive lifecycle
+- Rich content support
+- Post analytics — views, likes, comment counts, read time
+- Comment threads with nested replies
+- Comment moderation per author
+
+### Administration
+
+- Full user management — view, suspend, ban accounts
+- Platform-wide post access and moderation
+- Activity audit logs
+- Dashboard metrics — active users, post volume, engagement trends
+
+---
+
+## Tech Stack
+
+| Layer            | Technology           |
+| ---------------- | -------------------- |
+| Framework        | FastAPI + Uvicorn    |
+| Database         | PostgreSQL + asyncpg |
+| ORM / Schema     | SQLModel             |
+| Migrations       | Alembic              |
+| Cache / Sessions | Redis                |
+| Auth             | JWT (python-jose)    |
+| Password Hashing | bcrypt (passlib)     |
+| Validation       | Pydantic v2          |
+
+---
+
+## Project Structure
+
+```
+blog-api/
+├── app/
+│   ├── api/
+│   │   └── v1/
+│   │       ├── auth/
+│   │       ├── posts/
+│   │       ├── comments/
+│   │       ├── users/
+│   │       └── admin/
+│   ├── core/
+│   │   ├── config.py
+│   │   ├── security.py
+│   │   └── dependencies.py
+│   │   └── db.py
+│   ├── models/
+│   ├── schemas/
+│   ├── services/
+│   └── main.py
+├── alembic/
+│   └── versions/
+├── tests/
+├── .env.example
+├── alembic.ini
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.11+
+- PostgreSQL 14+
+- Redis 7+
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/soliddev434/blog_api.git
+cd blog-api
+
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Environment Variables
+
+Copy the example file and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+```env
+# App
+# Database
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/blog_db
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# JWT
+JWT_SECRET_KEY=your-jwt-secret
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+```
+
+### Database Setup
+
+```bash
+# Run migrations
+alembic upgrade head
+```
+
+To create a new migration after model changes:
+
+```bash
+alembic revision --autogenerate -m "describe your change"
+```
+
+### Running the Server
+
+```bash
+# Development
+fastapi dev
+
+# Production
+fastapi dev --workers 4
+```
+
+API is available at `http://localhost:8000`  
+Interactive docs at `http://localhost:8000/docs`
+
+---
+
+## Authentication
+
+This API uses **JWT Bearer token** authentication.
+
+**Register and log in to get your tokens:**
+
+```bash
+# Register
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "strongpassword"}'
+
+# Login
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "strongpassword"}'
+```
+
+**Use the access token on protected routes:**
+
+```bash
+curl -X GET http://localhost:8000/api/v1/posts/me \
+  -H "Authorization: Bearer <your_access_token>"
+```
+
+**Refresh an expired access token:**
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "<your_refresh_token>"}'
+```
+
+---
+
+## API Reference
+
+Full interactive documentation is auto-generated by FastAPI:
+
+| Interface    | URL                                  |
+| ------------ | ------------------------------------ |
+| Swagger UI   | `http://localhost:8000/docs`         |
+| ReDoc        | `http://localhost:8000/redoc`        |
+| OpenAPI JSON | `http://localhost:8000/openapi.json` |
+
+### Endpoint Summary
+
+| Method   | Endpoint                       | Description          | Auth         |
+| -------- | ------------------------------ | -------------------- | ------------ |
+| `POST`   | `/api/v1/auth/register`        | Register a new user  | Public       |
+| `POST`   | `/api/v1/auth/login`           | Login and get tokens | Public       |
+| `POST`   | `/api/v1/auth/refresh`         | Refresh access token | Public       |
+| `POST`   | `/api/v1/auth/logout`          | Revoke token         | Required     |
+| `GET`    | `/api/v1/posts`                | List published posts | Public       |
+| `POST`   | `/api/v1/posts`                | Create a post        | Author       |
+| `GET`    | `/api/v1/posts/{id}`           | Get single post      | Public       |
+| `PATCH`  | `/api/v1/posts/{id}`           | Update post          | Author       |
+| `DELETE` | `/api/v1/posts/{id}`           | Delete post          | Author       |
+| `POST`   | `/api/v1/posts/{id}/publish`   | Publish a draft      | Author       |
+| `GET`    | `/api/v1/posts/me`             | My posts             | Author       |
+| `GET`    | `/api/v1/posts/{id}/analytics` | Post analytics       | Author       |
+| `GET`    | `/api/v1/posts/{id}/comments`  | List comments        | Public       |
+| `POST`   | `/api/v1/posts/{id}/comments`  | Add comment          | Required     |
+| `DELETE` | `/api/v1/comments/{id}`        | Delete comment       | Author/Admin |
+| `GET`    | `/api/v1/users/me`             | Get own profile      | Required     |
+| `PATCH`  | `/api/v1/users/me`             | Update profile       | Required     |
+| `GET`    | `/api/v1/admin/users`          | List all users       | Admin        |
+| `PATCH`  | `/api/v1/admin/users/{id}/ban` | Ban a user           | Admin        |
+| `GET`    | `/api/v1/admin/posts`          | All posts            | Admin        |
+| `GET`    | `/api/v1/admin/activity`       | Activity logs        | Admin        |
+
+---
+
+## Contributing
+
+```bash
+# Create a feature branch
+git checkout -b feat/your-feature
+
+# Make your changes, then commit
+git commit -m "feat: describe your change"
+
+# Push and open a PR
+git push origin feat/your-feature
+```
+
+Please follow [Conventional Commits](https://www.conventionalcommits.org/) for commit messages.
+
+---
+
+<p align="center">Built with FastAPI</p>

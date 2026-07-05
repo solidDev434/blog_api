@@ -1,9 +1,20 @@
 from fastapi import FastAPI
-from core.settings import settings
+from contextlib import asynccontextmanager
+from core.db import init_db
 
-app = FastAPI()
 
-print(settings)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Server is starting")
+    await init_db()
+    yield
+    print("Server is shutting down")
+
+app = FastAPI(
+    title="Blog API",
+    lifespan=lifespan,
+    version="1.0.0"
+)
 
 
 @app.get("/")
