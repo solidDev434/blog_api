@@ -8,6 +8,9 @@ class UserRole(str, Enum):
     READER = "reader"
     AUTHOR = "author"
     EDITOR = "editor"
+
+
+class Role(UserRole):
     ADMIN = "admin"
 
 

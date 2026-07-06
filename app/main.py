@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from core.db import init_db
+from routers import users, auth
 
 
 @asynccontextmanager
@@ -16,7 +17,5 @@ app = FastAPI(
     version="1.0.0"
 )
 
-
-@app.get("/")
-async def read_root():
-    return {"Hello": "World"}
+app.include_router(users.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/api/v1")
