@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from sqlmodel import SQLModel
 
 # Models
-from app.models.user import User
+from app.models.users import User
 
 from alembic import context
 
