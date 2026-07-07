@@ -1,4 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, status
+
+from core.dependency import CurrentUser
+from schemas.users import UserResponse
 
 router = APIRouter(
     prefix="/users",
@@ -6,6 +9,10 @@ router = APIRouter(
 )
 
 
-@router.get("/")
-async def read_users():
-    return [{"user": "josephibok36@gmail.com"}]
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK
+)
+async def read_users(user: CurrentUser):
+    return user

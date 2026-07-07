@@ -16,7 +16,7 @@ AsyncSessionLocal = async_sessionmaker(
     class_=AsyncSession
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -48,7 +48,7 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
 
-    if user.is_disabled:
+    if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Inactive user"
@@ -57,7 +57,7 @@ async def get_current_user(
     return user
 
 
-async def get_current_active_user(current_user: User = Depends(get_current_user)):
+async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     """Get current active user"""
     if not current_user.is_active:
         raise HTTPException(
@@ -65,3 +65,6 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
             detail="Inactive user"
         )
     return current_user
+
+
+CurrentUser = Annotated[User, Depends(get_current_active_user)]

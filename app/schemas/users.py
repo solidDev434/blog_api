@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
-from models.users import User, UserRole
+from models.users import UserRole
 from datetime import datetime
+from typing import Optional
 
 
 class UserBase(BaseModel):
@@ -25,3 +26,12 @@ class UserResponse(UserBase):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class TokenData(BaseModel):
+    username: Optional[str] = None

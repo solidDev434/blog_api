@@ -1,9 +1,13 @@
 from fastapi import APIRouter, Depends, status, HTTPException
-from sqlmodel.ext.asyncio.session import AsyncSession
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.ext.asyncio.session import AsyncSession
+from datetime import timedelta
 
-from core.dependency import get_db_session, get_current_user
-from schemas.users import UserResponse, UserCreate
+from core.dependency import get_db_session
+from schemas.users import (UserResponse, UserCreate, Token)
 from services.auth import AuthService
+from core.config import settings
+from core.security import create_access_token
 
 router = APIRouter(
     prefix="/auth",
@@ -11,9 +15,29 @@ router = APIRouter(
 )
 
 
-@router.post("/login")
-async def login_user():
-    return "LOGIN USER"
+@router.post(
+    "/login",
+    status_code=status.HTTP_200_OK,
+    response_model=Token
+)
+async def login_user(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db_session)
+):
+    user = await AuthService.login_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    access_token_expires = timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires)
+
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.post(
