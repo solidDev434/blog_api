@@ -57,3 +57,15 @@ class AuthService:
         await db.commit()
         await db.refresh(db_user)
         return db_user
+
+    @staticmethod
+    async def is_username_taken(db: AsyncSession, username: str) -> bool:
+        """Check if username already exists"""
+        user = await AuthService.get_user_by_username(db, username)
+        return user is not None
+
+    @staticmethod
+    async def is_email_taken(db: AsyncSession, email: EmailStr) -> bool:
+        """Check if username already exists"""
+        user = await AuthService.get_user_by_email(db, email)
+        return user is not None

@@ -25,7 +25,7 @@ class User(SQLModel, table=True):
     email: EmailStr = Field(sa_type=AutoString, nullable=False)
     hashed_password: str
     role: UserRole = Field(default=UserRole.READER)
-    is_disabled: bool = Field(default=False)
+    is_active: bool = Field(default=True)
     is_email_verified: bool = Field(default=False)
     email_verified_at: Optional[datetime] = Field(default=None, nullable=True)
 
