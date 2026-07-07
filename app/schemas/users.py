@@ -30,8 +30,12 @@ class UserLogin(BaseModel):
 
 class Token(BaseModel):
     access_token: str
-    token_type: str = "bearer"
+    refresh_token: str
 
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+
+class RefreshToken(BaseModel):
+    refresh_token: str

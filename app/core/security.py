@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -29,25 +30,74 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(
         to_encode,
-        settings.JWT_SECRET_KEY,
+        settings.JWT_ACCESS_SECRET_KEY,
         algorithm=settings.ALGORITHM
     )
     return encoded_jwt
 
 
-def verify_token(token: str) -> Optional[str]:
-    """Verify and extract username from token"""
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """Create JWT token"""
+    to_encode = data.copy()
+
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(
+        to_encode,
+        settings.JWT_REFRESH_SECRET_KEY,
+        algorithm=settings.ALGORITHM
+    )
+    return encoded_jwt
+
+
+def verify_access_token(token: str, expected_type="access") -> Optional[str]:
+    """Verify and extract username from access token"""
     try:
         payload = jwt.decode(
             token,
-            settings.JWT_SECRET_KEY,
+            settings.JWT_ACCESS_SECRET_KEY,
             algorithms=[settings.ALGORITHM]
         )
-        print(payload)
         username: str = payload.get("sub")
+        token_type: str = payload.get("type")
 
         if not username:
             return None
+
+        if token_type != expected_type:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Wrong token type"
+            )
+
+        return username
+    except JWTError:
+        return None
+
+
+def verify_refresh_token(token: str, expected_type="refresh") -> Optional[str]:
+    """Verify and extract username from refresh token"""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_REFRESH_SECRET_KEY,
+            algorithms=[settings.ALGORITHM]
+        )
+        username: str = payload.get("sub")
+        token_type: str = payload.get("type")
+
+        if not username:
+            return None
+
+        if token_type != expected_type:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Wrong token type"
+            )
         return username
     except JWTError:
         return None

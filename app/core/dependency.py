@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
-from .security import verify_token
+from .security import verify_access_token
 from .db import async_engine
 from models.users import User
 from services.auth import AuthService
@@ -39,7 +39,7 @@ async def get_current_user(
         detail="Could not validate credentials"
     )
 
-    username = verify_token(token)
+    username = verify_access_token(token)
     if username is None:
         raise credentials_exception
 

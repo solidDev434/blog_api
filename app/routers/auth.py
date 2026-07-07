@@ -4,10 +4,14 @@ from sqlalchemy.ext.asyncio.session import AsyncSession
 from datetime import timedelta
 
 from core.dependency import get_db_session
-from schemas.users import (UserResponse, UserCreate, Token)
+from schemas.users import (UserResponse, UserCreate, Token, RefreshToken)
 from services.auth import AuthService
 from core.config import settings
-from core.security import create_access_token
+from core.security import (
+    create_access_token,
+    create_refresh_token,
+    verify_refresh_token
+)
 
 router = APIRouter(
     prefix="/auth",
@@ -32,12 +36,16 @@ async def login_user(
             headers={"WWW-Authenticate": "Bearer"}
         )
 
-    access_token_expires = timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires)
+        data={"sub": user.username, "type": "access"}, expires_delta=timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    refresh_token = create_refresh_token(
+        data={"sub": user.username, "type": "refresh"})
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token
+    }
 
 
 @router.post(
@@ -68,5 +76,16 @@ async def logout():
 
 
 @router.post("/refresh")
-async def refresh():
-    return "REFRESH TOKEN"
+async def refresh(payload: RefreshToken):
+    username = verify_refresh_token(payload.refresh_token)
+
+    access_token = create_access_token(
+        data={"sub": username, "type": "access"}, expires_delta=timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    refresh_token = create_refresh_token(
+        data={"sub": username, "type": "refresh"})
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token
+    }

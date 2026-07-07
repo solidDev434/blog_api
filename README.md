@@ -142,10 +142,9 @@ DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/blog_db
 REDIS_URL=redis://localhost:6379
 
 # JWT
-JWT_SECRET_KEY=your-jwt-secret
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-REFRESH_TOKEN_EXPIRE_DAYS=7
+JWT_ACCESS_SECRET_KEY=your-jwt-access-secret
+JWT_REFRESH_SECRET_KEY=refresh-secret
+ALGORITHM=HS256
 ```
 
 ### Database Setup
