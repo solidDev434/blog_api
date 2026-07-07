@@ -15,7 +15,7 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: int
-    is_disabled: bool
+    is_active: bool
     is_email_verified: bool
     created_at: datetime
 

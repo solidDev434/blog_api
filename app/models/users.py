@@ -22,7 +22,7 @@ class User(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     username: str = Field(index=True, unique=True, nullable=False)
-    email: EmailStr = Field(sa_type=AutoString, nullable=False)
+    email: EmailStr = Field(sa_type=AutoString, nullable=False, unique=True)
     hashed_password: str
     role: UserRole = Field(default=UserRole.READER)
     is_active: bool = Field(default=True)

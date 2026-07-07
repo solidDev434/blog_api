@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from core.db import init_db
 from routers import users, auth
@@ -17,7 +17,5 @@ app = FastAPI(
     version="1.0.0"
 )
 
-v1_router = APIRouter(prefix="/api/v1")
-
-v1_router.include_router(users.router, prefix="/api/v1")
-v1_router.include_router(auth.router, prefix="/api/v1")
+app.include_router(users.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/api/v1")
