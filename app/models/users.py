@@ -31,4 +31,4 @@ class User(SQLModel, table=True):
 
     created_at: datetime = Field(default_factory=lambda: datetime.now())
     updated_at: datetime = Field(default_factory=lambda: datetime.now())
-    last_login_at: datetime = Field(default_factory=lambda: datetime.now())
+    last_login_at: datetime = Field(default=None, nullable=True)
