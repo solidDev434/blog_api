@@ -45,11 +45,14 @@ async def login_user(
         data={"sub": user.username, "type": "refresh"})
 
     # Set the refresh token in cookie
+    refresh_token_expiry_timestamp = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
     response.set_cookie(
         key="rft",
         value=refresh_token,
-        expires=settings.REFRESH_TOKEN_EXPIRE_DAYS,
-        httponly=True
+        expires=refresh_token_expiry_timestamp,
+        httponly=True,
+        secure=True,
+        samesite="strict"
     )
 
     return {"access_token": access_token}
