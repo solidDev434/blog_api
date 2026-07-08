@@ -1,8 +1,11 @@
+import uuid
 from fastapi import HTTPException, status
 from datetime import datetime, timedelta
-from typing import Optional
-from jose import JWTError, jwt
+from typing import Optional, Tuple
+from jose import JWTError, ExpiredSignatureError, jwt
 from passlib.context import CryptContext
+
+from schemas.exceptions import InvalidTokenError, TokenError, WrongTokenTypeError
 from .config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"])
@@ -27,7 +30,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": expire,
+        "jti": str(uuid.uuid4())
+    })
     encoded_jwt = jwt.encode(
         to_encode,
         settings.JWT_ACCESS_SECRET_KEY,
@@ -54,7 +60,7 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     return encoded_jwt
 
 
-def verify_access_token(token: str, expected_type="access") -> Optional[str]:
+def verify_access_token(token: str, expected_type="access") -> dict:
     """Verify and extract username from access token"""
     try:
         payload = jwt.decode(
@@ -62,29 +68,31 @@ def verify_access_token(token: str, expected_type="access") -> Optional[str]:
             settings.JWT_ACCESS_SECRET_KEY,
             algorithms=[settings.ALGORITHM]
         )
-        username: str = payload.get("sub")
-        token_type: str = payload.get("type")
-
-        if token_type != expected_type:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Wrong token type"
-            )
-
-        if not username:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User account error.",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        return username
+    except ExpiredSignatureError:
+        raise InvalidTokenError("Token has expired")
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid access token",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise InvalidTokenError("Invalid authentication credentials")
+
+    username: str = payload.get("sub")
+    token_type: str = payload.get("type")
+    jti: Optional[str] = payload.get("jti")
+    exp: Optional[int] = payload.get("exp")
+
+    if not username:
+        raise InvalidTokenError("Malformed token: missing required claims")
+
+    if token_type != expected_type:
+        raise WrongTokenTypeError(
+            f"Expected token type '{expected_type}', got '{token_type}'"
         )
+
+    return {
+        "username": username,
+        "jti": jti,
+        "token_type": token_type,
+        "exp": exp,
+        "iat": payload.get("iat"),
+    }
 
 
 def verify_refresh_token(token: str, expected_type="refresh") -> Optional[str]:
@@ -95,26 +103,20 @@ def verify_refresh_token(token: str, expected_type="refresh") -> Optional[str]:
             settings.JWT_REFRESH_SECRET_KEY,
             algorithms=[settings.ALGORITHM]
         )
-        username: str = payload.get("sub")
-        token_type: str = payload.get("type")
-
-        if token_type != expected_type:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Wrong token type"
-            )
-
-        if not username:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User account error.",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        return username
+    except ExpiredSignatureError:
+        raise InvalidTokenError("Token has expired")
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="The refresh token has expired or was not found.",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise InvalidTokenError("Invalid authentication credentials")
+
+    username: str = payload.get("sub")
+    token_type: str = payload.get("type")
+
+    if not username:
+        raise InvalidTokenError("Malformed token: missing required claims")
+
+    if token_type != expected_type:
+        raise WrongTokenTypeError(
+            f"Expected token type '{expected_type}', got '{token_type}'"
         )
+
+    return username

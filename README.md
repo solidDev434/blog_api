@@ -63,7 +63,7 @@
 | Database         | PostgreSQL + asyncpg |
 | ORM / Schema     | SQLModel             |
 | Migrations       | Alembic              |
-| Cache / Sessions | Redis                |
+| Cache            | Redis                |
 | Auth             | JWT (python-jose)    |
 | Password Hashing | bcrypt (passlib)     |
 | Validation       | Pydantic v2          |

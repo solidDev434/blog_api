@@ -1,23 +1,29 @@
+import logging
 from fastapi import APIRouter, Depends, status, HTTPException, Response, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
+from datetime import datetime
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from datetime import timedelta
 from typing import Annotated
 
-from core.dependency import get_db_session
-from schemas.users import (UserResponse, UserCreate, Token, RefreshToken)
+from core.dependency import get_db_session, Cache, oauth2_scheme
+from schemas.users import (UserResponse, UserCreate, Token)
+from schemas.exceptions import TokenError
 from services.auth import AuthService
 from core.config import settings
 from core.security import (
     create_access_token,
     create_refresh_token,
-    verify_refresh_token
+    verify_refresh_token,
+    verify_access_token
 )
 
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
 )
+
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -81,11 +87,25 @@ async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db_sess
 
 
 @router.post("/logout")
-async def logout():
-    return "LOGOUT USER"
+async def logout(cache: Cache, token: str = Depends(oauth2_scheme)):
+    try:
+        claims = verify_access_token(token)
+    except TokenError:
+        return {"message": "Logged out"}
+    print(claims, "Logout claims")
+
+    ttl = claims["exp"] - int(datetime.utcnow().timestamp())
+    if ttl > 0:
+        await cache.set(f"bl:{claims['jti']}", "1", ttl=ttl)
+
+    return {"message": "Logged out successfully"}
 
 
-@router.post("/refresh")
+@router.post(
+    "/refresh",
+    status_code=status.HTTP_200_OK,
+    response_model=Token
+)
 async def refresh(rft: Annotated[str | None, Cookie()] = None):
     username = verify_refresh_token(rft) if rft else None
 

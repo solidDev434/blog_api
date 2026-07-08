@@ -34,7 +34,3 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
-
-
-class RefreshToken(BaseModel):
-    refresh_token: str

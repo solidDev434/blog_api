@@ -1,15 +1,23 @@
+import logging
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+
 from core.db import init_db
+from core.redis import redis_client
 from routers import users, auth
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Server is starting")
+    logger.info("Server is starting")
     await init_db()
+    await redis_client.connect()
+
     yield
-    print("Server is shutting down")
+    logger.info("Server is shutting down")
+    await redis_client.disconnect()
 
 app = FastAPI(
     title="Blog API",
