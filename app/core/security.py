@@ -65,18 +65,26 @@ def verify_access_token(token: str, expected_type="access") -> Optional[str]:
         username: str = payload.get("sub")
         token_type: str = payload.get("type")
 
-        if not username:
-            return None
-
         if token_type != expected_type:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Wrong token type"
             )
 
+        if not username:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User account error.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
         return username
     except JWTError:
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid access token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 def verify_refresh_token(token: str, expected_type="refresh") -> Optional[str]:
@@ -90,14 +98,23 @@ def verify_refresh_token(token: str, expected_type="refresh") -> Optional[str]:
         username: str = payload.get("sub")
         token_type: str = payload.get("type")
 
-        if not username:
-            return None
-
         if token_type != expected_type:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Wrong token type"
             )
+
+        if not username:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User account error.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
         return username
     except JWTError:
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="The refresh token has expired or was not found.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )

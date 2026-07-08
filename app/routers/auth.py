@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Response, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from datetime import timedelta
+from typing import Annotated
 
 from core.dependency import get_db_session
 from schemas.users import (UserResponse, UserCreate, Token, RefreshToken)
@@ -25,6 +26,7 @@ router = APIRouter(
     response_model=Token
 )
 async def login_user(
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db_session)
 ):
@@ -42,10 +44,15 @@ async def login_user(
     refresh_token = create_refresh_token(
         data={"sub": user.username, "type": "refresh"})
 
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token
-    }
+    # Set the refresh token in cookie
+    response.set_cookie(
+        key="rft",
+        value=refresh_token,
+        expires=settings.REFRESH_TOKEN_EXPIRE_DAYS,
+        httponly=True
+    )
+
+    return {"access_token": access_token}
 
 
 @router.post(
@@ -76,16 +83,11 @@ async def logout():
 
 
 @router.post("/refresh")
-async def refresh(payload: RefreshToken):
-    username = verify_refresh_token(payload.refresh_token)
+async def refresh(rft: Annotated[str | None, Cookie()] = None):
+    username = verify_refresh_token(rft) if rft else None
 
     access_token = create_access_token(
         data={"sub": username, "type": "access"}, expires_delta=timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
-    refresh_token = create_refresh_token(
-        data={"sub": username, "type": "refresh"})
 
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token
-    }
+    return {"access_token": access_token}
