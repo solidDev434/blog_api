@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from core.db import init_db
 from core.redis import redis_client
-from routers import users, auth
+from routers import users, auth, author_profile
 
 logger = logging.getLogger(__name__)
 
@@ -27,3 +27,4 @@ app = FastAPI(
 
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(author_profile.router, prefix="/api/v1")
