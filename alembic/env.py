@@ -7,6 +7,7 @@ from sqlmodel import SQLModel
 
 # Models
 from app.models.users import User
+from app.models.author_profile import AuthorProfile
 
 from alembic import context
 
