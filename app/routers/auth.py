@@ -10,6 +10,7 @@ from core.dependency import get_db_session, Cache, oauth2_scheme
 from schemas.users import (UserResponse, UserCreate, Token)
 from schemas.exceptions import TokenError
 from services.auth import AuthService
+from core.utils.token_utils import blacklist_token, ste_refresh_token_cookie
 from core.config import settings
 from core.security import (
     create_access_token,
@@ -51,15 +52,7 @@ async def login_user(
         data={"sub": user.username, "type": "refresh"})
 
     # Set the refresh token in cookie
-    refresh_token_expiry_timestamp = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
-    response.set_cookie(
-        key="rft",
-        value=refresh_token,
-        expires=refresh_token_expiry_timestamp,
-        httponly=True,
-        secure=True,
-        samesite="strict"
-    )
+    ste_refresh_token_cookie(response, refresh_token)
 
     return {"access_token": access_token}
 
@@ -87,16 +80,33 @@ async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db_sess
 
 
 @router.post("/logout")
-async def logout(cache: Cache, token: str = Depends(oauth2_scheme)):
+async def logout(
+    response: Response,
+    cache: Cache,
+    token: str = Depends(oauth2_scheme),
+    rft: Annotated[str | None, Cookie()] = None,
+):
     try:
         claims = verify_access_token(token)
+        await blacklist_token(cache, claims['jti'], claims["exp"])
     except TokenError:
-        return {"message": "Logged out"}
-    print(claims, "Logout claims")
+        pass
 
-    ttl = claims["exp"] - int(datetime.utcnow().timestamp())
-    if ttl > 0:
-        await cache.set(f"bl:{claims['jti']}", "1", ttl=ttl)
+    # Blacklist the refresh token too
+    if rft:
+        try:
+            refresh_claims = verify_refresh_token(rft)
+            await blacklist_token(cache, refresh_claims['jti'], refresh_claims["exp"], "bl_ref")
+        except TokenError:
+            pass
+
+    # Clear cookie
+    response.delete_cookie(
+        key="rft",
+        httponly=True,
+        secure=True,
+        samesite="strict"
+    )
 
     return {"message": "Logged out successfully"}
 
@@ -106,11 +116,33 @@ async def logout(cache: Cache, token: str = Depends(oauth2_scheme)):
     status_code=status.HTTP_200_OK,
     response_model=Token
 )
-async def refresh(rft: Annotated[str | None, Cookie()] = None):
-    username = verify_refresh_token(rft) if rft else None
+async def refresh(
+    response: Response,
+    cache: Cache,
+    rft: Annotated[str | None, Cookie()] = None
+):
+    if not rft:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token")
+
+    try:
+        claims = verify_refresh_token(rft)
+    except TokenError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid refresh token")
+
+    if await cache.get(f"bl_ref:{claims['jti']}"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Refresh token has been revoked")
+
+    await blacklist_token(cache, claims['jti'], claims["exp"], "bl_ref")
 
     access_token = create_access_token(
-        data={"sub": username, "type": "access"}, expires_delta=timedelta(
+        data={"sub": claims["username"], "type": "access"}, expires_delta=timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    refresh_token = create_refresh_token(
+        data={"sub": claims["username"], "type": "refresh"})
+
+    ste_refresh_token_cookie(response, refresh_token)
 
     return {"access_token": access_token}

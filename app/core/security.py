@@ -51,7 +51,10 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     else:
         expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": expire,
+        "jti": str(uuid.uuid4())
+    })
     encoded_jwt = jwt.encode(
         to_encode,
         settings.JWT_REFRESH_SECRET_KEY,
@@ -95,7 +98,7 @@ def verify_access_token(token: str, expected_type="access") -> dict:
     }
 
 
-def verify_refresh_token(token: str, expected_type="refresh") -> Optional[str]:
+def verify_refresh_token(token: str, expected_type="refresh") -> dict:
     """Verify and extract username from refresh token"""
     try:
         payload = jwt.decode(
@@ -110,6 +113,8 @@ def verify_refresh_token(token: str, expected_type="refresh") -> Optional[str]:
 
     username: str = payload.get("sub")
     token_type: str = payload.get("type")
+    jti: Optional[str] = payload.get("jti")
+    exp: Optional[int] = payload.get("exp")
 
     if not username:
         raise InvalidTokenError("Malformed token: missing required claims")
@@ -119,4 +124,9 @@ def verify_refresh_token(token: str, expected_type="refresh") -> Optional[str]:
             f"Expected token type '{expected_type}', got '{token_type}'"
         )
 
-    return username
+    return {
+        "username": username,
+        "jti": jti,
+        "exp": exp,
+        "token_type": token_type,
+    }
