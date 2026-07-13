@@ -11,3 +11,13 @@ class InvalidTokenError(TokenError):
 class WrongTokenTypeError(TokenError):
     """Token is valid but not the expected type (access vs refresh)"""
     pass
+
+
+class NotFoundError(Exception):
+    """Requested resource does not exist"""
+    pass
+
+
+class ConflictError(Exception):
+    """Operation conflicts with existing state"""
+    pass
