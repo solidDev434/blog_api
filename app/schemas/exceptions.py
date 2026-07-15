@@ -3,6 +3,21 @@ class TokenError(Exception):
     pass
 
 
+class ForbiddenRequest(Exception):
+    """Base exception for forbidden requests failures"""
+    pass
+
+
+class BadRequest(Exception):
+    """Base exception for forbidden requests failures"""
+    pass
+
+
+class UnauthorizedRequest(Exception):
+    """Base exception for forbidden requests failures"""
+    pass
+
+
 class InvalidTokenError(TokenError):
     """Token is malformed, expired, or has an invalid signature"""
     pass
