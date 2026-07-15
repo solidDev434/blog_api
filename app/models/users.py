@@ -1,21 +1,19 @@
 import uuid
 from enum import Enum
-from sqlmodel import Field, SQLModel, AutoString
+from sqlmodel import Field, SQLModel, AutoString, Column, DateTime, Relationship
 from pydantic import EmailStr
 from datetime import datetime, timezone
-from extendableenum import inheritable_enum
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+# import for type checking to avoid runtime import cycles / undefined name warnings
+if TYPE_CHECKING:
+    from .author_profile import AuthorProfile
 
 
-@inheritable_enum
-class UserRole(str, Enum):
+class Role(Enum):
     READER = "reader"
     AUTHOR = "author"
     EDITOR = "editor"
-
-
-class Role(UserRole):
-    ADMIN = "admin"
 
 
 class User(SQLModel, table=True):
@@ -25,16 +23,27 @@ class User(SQLModel, table=True):
     username: str = Field(index=True, unique=True, nullable=False)
     email: EmailStr = Field(sa_type=AutoString, nullable=False, unique=True)
     hashed_password: str
-    role: UserRole = Field(default=UserRole.READER)
+    role: Role = Field(default=Role.READER)
     is_active: bool = Field(default=True)
     is_email_verified: bool = Field(default=False)
-    email_verified_at: Optional[datetime] = Field(default=None, nullable=True)
+    author_profile: Optional["AuthorProfile"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"uselist": False}
+    )
 
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc))
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
-        sa_column_kwargs={"onupdate": datetime.now(timezone.utc)},
-        nullable=False
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            onupdate=lambda: datetime.now(timezone.utc),
+        ),
     )
-    last_login_at: datetime = Field(default=None, nullable=True)
+    last_login_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )

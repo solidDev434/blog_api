@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from typing import AsyncGenerator, Annotated
+from typing import AsyncGenerator, Annotated, List
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio.session import AsyncSession
@@ -9,7 +9,7 @@ from redis.asyncio import Redis
 from .redis import redis_client
 from .security import verify_access_token
 from .db import async_engine
-from models.users import User
+from models.users import User, Role
 from services.auth import AuthService
 from services.cache import CacheService
 from schemas.exceptions import WrongTokenTypeError, InvalidTokenError
@@ -74,12 +74,6 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Could not validate credentials")
 
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user"
-        )
-
     return user
 
 
@@ -93,11 +87,16 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     return current_user
 
 
-async def get_access_token(authorization: str):
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Invalid authentication credentials")
-    return authorization.split(" ")[1]
+def role_required(required_roles: List[Role]):
+    def wrapper(user: User = Depends(get_current_active_user)):
+        if user.role not in required_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied for role: {user.role.value.capitalize()}"
+            )
+        return user
+    return wrapper
+
 
 CurrentUser = Annotated[User, Depends(get_current_active_user)]
 Cache = Annotated[CacheService, Depends(get_cache)]
