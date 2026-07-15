@@ -8,7 +8,7 @@ from schemas.author_profile import (
     AuthorProfileUpdate,
     AuthorProfileResponse
 )
-from schemas.exceptions import NotFoundError
+from schemas.exceptions import NotFoundError, ConflictError
 from core.dependency import role_required, User, Role, get_db_session
 from services.author_profile import AuthorProfileService
 
@@ -42,7 +42,13 @@ async def get_all_author_profiles(db: AsyncSession = Depends(get_db_session)):
 async def get_author_profile_by_id(author_id: uuid.UUID, db: AsyncSession = Depends(get_db_session)):
     try:
         profile = await AuthorProfileService.get_author_profile_by_id(db, author_id)
+        print(profile)
         return profile
+    except NotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
     except:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -51,25 +57,27 @@ async def get_author_profile_by_id(author_id: uuid.UUID, db: AsyncSession = Depe
 
 
 @router.get(
-    "/me",
+    "/me/",
     status_code=status.HTTP_200_OK,
     response_model=AuthorProfileResponse
 )
-async def get_author_profile(
+async def get_authenticated_author_profile(
     user: User = Depends(role_required([Role.AUTHOR])),
     db: AsyncSession = Depends(get_db_session)
 ):
     try:
         profile = await AuthorProfileService.get_authenticated_user_author_profile(db, user.id)
         return profile
-    except:
+
+    except Exception as e:
+        print(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"
         )
 
 
-@router.post("/me", status_code=status.HTTP_201_CREATED)
+@router.post("/me/", status_code=status.HTTP_201_CREATED)
 async def create_author_profile(
     payload: AuthorProfileCreate,
     user: User = Depends(role_required([Role.AUTHOR])),
@@ -78,6 +86,11 @@ async def create_author_profile(
     try:
         await AuthorProfileService.create_author_profile(db, user.id, payload)
         return {"message": "Author profile created successfully"}
+    except ConflictError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        )
     except:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -85,7 +98,7 @@ async def create_author_profile(
         )
 
 
-@router.patch("/me", status_code=status.HTTP_200_OK)
+@router.patch("/me/", status_code=status.HTTP_200_OK)
 async def update_author_profile(
     payload: AuthorProfileUpdate,
     user: User = Depends(role_required([Role.AUTHOR])),
