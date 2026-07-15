@@ -1,7 +1,6 @@
 import logging
 from fastapi import APIRouter, Depends, status, HTTPException, Response, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
-from datetime import datetime
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from datetime import timedelta
 from typing import Annotated
@@ -10,6 +9,7 @@ from core.dependency import get_db_session, Cache, oauth2_scheme
 from schemas.users import (UserResponse, UserCreate, Token)
 from schemas.exceptions import TokenError
 from services.auth import AuthService
+from services.user import UserService
 from core.utils.token_utils import blacklist_token, ste_refresh_token_cookie
 from core.config import settings
 from core.security import (
@@ -63,13 +63,13 @@ async def login_user(
     response_model=UserResponse
 )
 async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db_session)):
-    if await AuthService.is_username_taken(db, user.username):
+    if await UserService.is_username_taken(db, user.username):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered"
         )
 
-    if await AuthService.is_email_taken(db, user.email):
+    if await UserService.is_email_taken(db, user.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
