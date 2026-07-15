@@ -1,7 +1,6 @@
 import uuid
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from models.users import Role
-from datetime import datetime
 from typing import Optional
 
 
@@ -13,6 +12,17 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=128, nullable=False)
     role: Role = Field(default=Role.READER, nullable=False)
+
+
+class UserUpdate(UserBase):
+    pass
+
+
+class UserPasswordUpdate(BaseModel):
+    old_password: str = Field(..., min_length=8,
+                              max_length=128, nullable=False)
+    new_password: str = Field(..., min_length=8,
+                              max_length=128, nullable=False)
 
 
 class UserResponse(UserBase):
